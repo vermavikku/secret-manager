@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secrets Manager</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Header / Navbar -->
+  <header class="header">
+    <div class="header-center">
+      <a href="/" class="header-title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
+        Secrets Manager
+      </a>
+      <div class="header-subtitle">Encrypted secret store — local <span style="color: var(--success); font-weight: 600;">Mongo</span>DB &bull; <span style="color: var(--text-dim);">AES-256-GCM</span></div>
+    </div>
+    <div class="header-right">
+      <div class="encryption-badge">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
+        AES-256-GCM<br>ENCRYPTION
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <main class="main">
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+      <!-- Add Secret Card -->
+      <div class="card" id="add-section">
+        <div class="card-header">
+          <div class="card-icon add">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="card-title">Add Secret</h2>
+            <p class="card-subtitle">Add a new secret to your encrypted store</p>
+          </div>
+        </div>
+        <form id="secret-form">
+          <div class="form-group">
+            <label for="secret-key">Key <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <input type="text" id="secret-key" placeholder="e.g. MY_API_KEY" required autocomplete="off" spellcheck="false">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="secret-value">Value <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <input type="text" id="secret-value" placeholder="Enter secret value" required autocomplete="off" spellcheck="false">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="secret-description">Description (optional)</label>
+            <input type="text" id="secret-description" placeholder="Describe the secret value" autocomplete="off">
+          </div>
+          <button type="submit" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Secret
+          </button>
+        </form>
+        <div id="add-message" class="message"></div>
+
+        <div class="divider"><span>OR</span></div>
+
+        <!-- Import Section -->
+        <div class="import-section" id="drop-zone">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-dim); flex-shrink: 0; margin-right: 0.75rem;">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <div class="import-text">
+            <h3 class="import-title">Import from .env file</h3>
+            <p class="import-desc">Drag & drop your <code>.env</code> file here</p>
+            <p class="import-browse">or click to <span class="browse-link">browse</span></p>
+          </div>
+        </div>
+        <input type="file" id="file-input" accept=".env,.txt" hidden>
+        <div id="import-message" class="message"></div>
+      </div>
+
+      <!-- Info Card -->
+      <div class="info-card">
+        <div class="card-icon shield">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <polyline points="9 12 11 14 15 10"/>
+          </svg>
+        </div>
+        <div>
+          <div class="info-card-title">Your secrets are encrypted</div>
+          <div class="info-card-text">All secrets are encrypted using AES-256-GCM before being stored in the database.</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Content -->
+    <div class="content">
+      <div class="card">
+        <div class="card-header-spaced">
+          <div class="card-header-left">
+            <div class="card-title-row">
+              <div class="card-icon folder" style="width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; background: var(--tag-bg); color: var(--text-dim);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                </svg>
+              </div>
+              <div>
+                <h2 class="card-title">Stored Secrets</h2>
+                <p class="card-subtitle">Manage and access your encrypted secrets</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <div class="search-wrapper">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="text" class="search-input" id="search-input" placeholder="Search secrets...">
+            </div>
+            <button class="refresh-btn icon-button" id="refresh-btn" title="Refresh">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <polyline points="1 16 1 10 7 10"/>
+                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+              </svg>
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrapper">
+          <table id="secrets-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>KEY</th>
+                <th>VALUE (Masked/Reveal)</th>
+                <th>DESCRIPTION</th>
+                <th>UPDATED</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="secrets-tbody">
+              <tr class="state-loading">
+                <td colspan="6">Loading secrets...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-wrapper">
+          <div class="pagination-info" id="pagination-info">Showing 1 to 10 of 99 secrets</div>
+          <div class="pagination-controls" id="pagination-controls">
+            <button class="page-btn" disabled>‹</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <span class="pagination-ellipsis">...</span>
+            <button class="page-btn">99</button>
+            <button class="page-btn">›</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal">
+      <h3 class="modal-title">Delete Secret</h3>
+      <p class="modal-body">Are you sure you want to delete <strong id="delete-key-name"></strong>? This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancel-delete">Cancel</button>
+        <button class="btn btn-danger" id="confirm-delete">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+          </svg>
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Secret Modal -->
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+      <h3 class="modal-title">Edit Secret</h3>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="edit-key">Key</label>
+          <input type="text" id="edit-key" disabled>
+        </div>
+        <div class="form-group">
+          <label for="edit-value">Value <span class="required">*</span></label>
+          <textarea id="edit-value" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="edit-description">Description</label>
+          <input type="text" id="edit-description">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancel-edit">Cancel</button>
+        <button class="btn btn-primary" id="save-edit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Preview Modal -->
+  <div class="modal-overlay" id="import-preview-modal">
+    <div class="modal" style="max-width: 600px;">
+      <h3 class="modal-title">Preview Import</h3>
+      <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+        <div id="import-preview-list"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancel-import-preview">Cancel</button>
+        <button class="btn btn-primary" id="confirm-import-preview">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Import All
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

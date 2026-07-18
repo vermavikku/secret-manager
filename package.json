@@ -1,0 +1,19 @@
+{
+  "name": "secrets-manager",
+  "version": "1.0.0",
+  "description": "Encrypted secrets manager for local development — stores app secrets in local MongoDB instead of .env files",
+  "main": "src/server.js",
+  "scripts": {
+    "ui": "node src/server.js",
+    "add-secret": "node cli/addSecret.js",
+    "import-env": "node cli/importEnv.js",
+    "gen-key": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "mongoose": "^8.6.0"
+  },
+  "keywords": ["secrets", "encryption", "mongodb", "local-development"],
+  "license": "MIT"
+}
