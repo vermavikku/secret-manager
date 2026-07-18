@@ -130,6 +130,22 @@ source ~/.zshrc   # or source ~/.bashrc
 
 > ⚠️ **Never** put this key in a project file. It belongs in your shell profile only. This way, even if someone gains access to your project files, they cannot decrypt your secrets without also having access to your machine's user account.
 
+### Set Your Project Name (Optional)
+
+If you're using Secrets Manager across multiple projects, set `PROJECT_NAME` in your shell profile so each project gets its own MongoDB database:
+
+```bash
+export PROJECT_NAME="myapp"
+```
+
+The database name defaults to `secrets-manager` if this variable is not set. The full URI becomes:
+
+```
+mongodb://localhost:27017/{PROJECT_NAME}
+```
+
+Add this to `~/.zshrc` or `~/.bashrc` alongside `ENCRYPTION_KEY`.
+
 ---
 
 ## 5. Set Admin Credentials
@@ -274,12 +290,37 @@ require('./secrets-manager/src/loader/loadSecrets')()
 ```
 
 **Options:**
-- `loadSecrets()` — skips env vars that are already set
+- `loadSecrets()` — loads secrets for the current `NODE_ENV` (defaults to `development`)
+- `loadSecrets({ environment: 'production' })` — explicitly load production secrets
 - `loadSecrets({ override: true })` — overwrites existing env vars
 
-**What happens:**
+### Recommended npm scripts in your parent project's `package.json`
+
+Add these scripts to your **parent project's** `package.json` (the one at the root, not inside `secrets-manager/`):
+
+```json
+{
+  "scripts": {
+    "start": "node test-server.js",
+    "start:dev": "cross-env NODE_ENV=development node test-server.js",
+    "start:prod": "cross-env NODE_ENV=production node test-server.js"
+  }
+}
+```
+
+> **On macOS/Linux** you can use `NODE_ENV=development` directly without `cross-env`.  
+> On **Windows** or for cross-platform compatibility, install `cross-env`: `npm install --save-dev cross-env`
+
+**How it works:**
+- `npm run start:dev` — sets `NODE_ENV=development`, loads only **development** secrets
+- `npm run start` — no NODE_ENV set, defaults to loading **development** secrets (same as start:dev)
+- `npm run start:prod` — sets `NODE_ENV=production`, loads only **production** secrets
+
+The loader automatically detects `process.env.NODE_ENV` and filters secrets by that environment.
+
+**What happens when your app starts:**
 1. Connects to local MongoDB
-2. Fetches all encrypted secrets
+2. Fetches all encrypted secrets matching the current `NODE_ENV`
 3. Decrypts each one
 4. Sets `process.env[KEY] = value` for each
 5. Disconnects from MongoDB

@@ -9,6 +9,19 @@
 <body>
   <!-- Header / Navbar -->
   <header class="header">
+    <div class="header-left">
+      <!-- Environment Toggle -->
+      <div class="env-toggle" id="env-toggle">
+        <button class="env-btn active" data-env="development" title="Switch to Development">
+          <span class="env-dot dev"></span>
+          Dev
+        </button>
+        <button class="env-btn" data-env="production" title="Switch to Production">
+          <span class="env-dot prod"></span>
+          Prod
+        </button>
+      </div>
+    </div>
     <div class="header-center">
       <a href="/" class="header-title">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

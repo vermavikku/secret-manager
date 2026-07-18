@@ -1,6 +1,6 @@
 /**
  * Secrets Manager — Admin UI Client
- * Fetches secrets from the API with pagination and search handled at the DB level.
+ * Fetches secrets from the API with environment support, pagination and search.
  */
 
 const API_BASE = '/api/secrets';
@@ -10,10 +10,12 @@ const API_BASE = '/api/secrets';
 let secrets = [];
 let revealedKeys = new Set();
 let deleteTarget = null;
+let deleteTargetEnv = null;
 let currentPage = 1;
 let totalPages = 1;
 let totalItems = 0;
 let currentSearch = '';
+let currentEnvironment = 'development';
 let importPreviewData = [];
 
 // ─── DOM References ───────────────────────────────────────────────────────────
@@ -42,6 +44,29 @@ const importPreviewModal = document.getElementById('import-preview-modal');
 const importPreviewList = document.getElementById('import-preview-list');
 const cancelImportPreviewBtn = document.getElementById('cancel-import-preview');
 const confirmImportPreviewBtn = document.getElementById('confirm-import-preview');
+const envToggle = document.getElementById('env-toggle');
+
+// ─── Environment Toggle ───────────────────────────────────────────────────────
+
+if (envToggle) {
+  envToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('.env-btn');
+    if (!btn) return;
+
+    const env = btn.dataset.env;
+    if (env === currentEnvironment) return;
+
+    // Update active state
+    envToggle.querySelectorAll('.env-btn').forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    currentEnvironment = env;
+
+    // Reload secrets for the new environment
+    currentPage = 1;
+    loadSecrets(1, currentSearch);
+  });
+}
 
 // ─── API Helpers ──────────────────────────────────────────────────────────────
 
@@ -136,7 +161,7 @@ function renderSecrets(secretsToRender = secrets) {
   if (secretsToRender.length === 0) {
     secretsTbody.innerHTML = `
       <tr class="state-empty">
-        <td colspan="6">No secrets found</td>
+        <td colspan="6">No secrets found for ${currentEnvironment}</td>
       </tr>
     `;
     paginationInfo.textContent = 'Showing 0 secrets';
@@ -195,23 +220,23 @@ function renderSecrets(secretsToRender = secrets) {
   // Update pagination info
   const start = totalItems === 0 ? 0 : (currentPage - 1) * 10 + 1;
   const end = Math.min(currentPage * 10, totalItems);
-  paginationInfo.textContent = `Showing ${start} to ${end} of ${totalItems} secrets`;
+  paginationInfo.textContent = `Showing ${start} to ${end} of ${totalItems} secrets (${currentEnvironment})`;
 
   // Render pagination controls
   renderPagination(currentPage, totalPages, totalItems);
 }
 
-// ─── Load Secrets (with pagination + search at DB level) ─────────────────────
+// ─── Load Secrets (with environment, pagination + search) ─────────────────────
 
 async function loadSecrets(page = 1, search = '') {
   try {
     secretsTbody.innerHTML = `
       <tr class="state-loading">
-        <td colspan="6">Loading secrets...</td>
+        <td colspan="6">Loading secrets for ${currentEnvironment}...</td>
       </tr>
     `;
 
-    const result = await apiFetch(`${API_BASE}?page=${page}&limit=10&search=${encodeURIComponent(search)}`);
+    const result = await apiFetch(`${API_BASE}?page=${page}&limit=10&search=${encodeURIComponent(search)}&environment=${currentEnvironment}`);
     
     if (result.success) {
       secrets = result.secrets || [];
@@ -249,10 +274,10 @@ secretForm.addEventListener('submit', async (e) => {
   try {
     await apiFetch(API_BASE, {
       method: 'POST',
-      body: JSON.stringify({ key, value, description }),
+      body: JSON.stringify({ key, value, description, environment: currentEnvironment }),
     });
 
-    addMessage.textContent = `✓ Secret "${key.toUpperCase()}" saved successfully!`;
+    addMessage.textContent = `✓ Secret "${key.toUpperCase()}" saved to ${currentEnvironment}!`;
     addMessage.className = 'message success';
 
     // Clear form
@@ -262,12 +287,6 @@ secretForm.addEventListener('submit', async (e) => {
 
     // Reload table (preserve search and go to page 1)
     await loadSecrets(1, currentSearch);
-
-    // Clear message after 3 seconds
-    setTimeout(() => {
-      addMessage.textContent = '';
-      addMessage.className = 'message';
-    }, 3000);
   } catch (err) {
     addMessage.textContent = `✗ Error: ${err.message}`;
     addMessage.className = 'message error';
@@ -299,7 +318,7 @@ async function saveEdit() {
   try {
     await apiFetch(API_BASE, {
       method: 'POST',
-      body: JSON.stringify({ key, value, description }),
+      body: JSON.stringify({ key, value, description, environment: currentEnvironment }),
     });
 
     editModal.classList.remove('active');
@@ -326,7 +345,7 @@ function showImportPreview(parsedEnv) {
   importPreviewData = Object.entries(parsedEnv).map(([key, value]) => ({
     key: key.trim(),
     value: value || '',
-    hidden: true, // values masked by default
+    hidden: true,
   }));
 
   renderImportPreview();
@@ -379,7 +398,6 @@ function toggleImportValueVisibility(idx) {
   const item = importPreviewData[idx];
   if (!item) return;
 
-  // Toggle hidden state and re-render
   item.hidden = !item.hidden;
   renderImportPreview();
 }
@@ -392,14 +410,14 @@ async function confirmImportPreview() {
       if (value) {
         await apiFetch(API_BASE, {
           method: 'POST',
-          body: JSON.stringify({ key: item.key, value, description: 'Imported from .env file' }),
+          body: JSON.stringify({ key: item.key, value, description: `Imported from .env file (${currentEnvironment})`, environment: currentEnvironment }),
         });
         imported++;
       }
     }
 
     importPreviewModal.classList.remove('active');
-    importMessage.textContent = `✓ Imported ${imported} secrets`;
+    importMessage.textContent = `✓ Imported ${imported} secrets into ${currentEnvironment}`;
     importMessage.className = 'message success';
 
     await loadSecrets(1, currentSearch);
@@ -427,6 +445,7 @@ importPreviewModal.addEventListener('click', (e) => {
 
 function promptDelete(key) {
   deleteTarget = key;
+  deleteTargetEnv = currentEnvironment;
   deleteKeyName.textContent = key;
   deleteModal.classList.add('active');
 }
@@ -435,12 +454,13 @@ async function confirmDelete() {
   if (!deleteTarget) return;
 
   try {
-    await apiFetch(`${API_BASE}/${encodeURIComponent(deleteTarget)}`, {
+    await apiFetch(`${API_BASE}/${encodeURIComponent(deleteTarget)}?environment=${deleteTargetEnv}`, {
       method: 'DELETE',
     });
 
     revealedKeys.delete(deleteTarget);
     deleteTarget = null;
+    deleteTargetEnv = null;
     deleteModal.classList.remove('active');
     await loadSecrets(currentPage, currentSearch);
   } catch (err) {
@@ -452,6 +472,7 @@ async function confirmDelete() {
 confirmDeleteBtn.addEventListener('click', confirmDelete);
 cancelDeleteBtn.addEventListener('click', () => {
   deleteTarget = null;
+  deleteTargetEnv = null;
   deleteModal.classList.remove('active');
 });
 
@@ -459,6 +480,7 @@ cancelDeleteBtn.addEventListener('click', () => {
 deleteModal.addEventListener('click', (e) => {
   if (e.target === deleteModal) {
     deleteTarget = null;
+    deleteTargetEnv = null;
     deleteModal.classList.remove('active');
   }
 });
@@ -616,7 +638,6 @@ function escapeHtml(str) {
 // ─── Event Delegation for Table Actions ──────────────────────────────────────
 
 secretsTbody.addEventListener('click', (e) => {
-  // Ensure we're working with an Element node (text nodes don't have .closest())
   const target = e.target.nodeType === 1 ? e.target : e.target.parentElement;
   
   const revealBtn = target.closest('.btn-reveal');

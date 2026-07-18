@@ -1,8 +1,10 @@
 /**
- * Generates a .env.example file in the current working directory (parent project root).
+ * Generates a .env.example file in the parent project root (3 levels up from this file).
  * Reads only key names and descriptions from MongoDB — never real values.
  * Uses fake placeholders from utils/fakeValue.util.js.
  * Safe to commit to git.
+ *
+ * Combines keys from all environments into a single file with env comments.
  */
 const fs = require('fs');
 const path = require('path');
@@ -11,9 +13,10 @@ const { getFakeValue } = require('../utils/fakeValue.util');
 const logger = require('../config/logger');
 
 /**
- * Generate a .env.example file in process.cwd().
+ * Generate a .env.example file in the parent project root.
  * Reads all secret keys and descriptions from MongoDB (never decrypted values),
  * and writes placeholder values using pattern-matching.
+ * Shows keys from both environments.
  */
 async function generateEnvExample() {
   try {
@@ -32,7 +35,12 @@ async function generateEnvExample() {
     content += '# This file lists the keys your application needs.\n';
     content += '# Copy placeholder values into your actual .env file or use the secrets-manager UI/CLI.\n\n';
 
+    let currentEnv = '';
     for (const secret of secrets) {
+      if (secret.environment !== currentEnv) {
+        currentEnv = secret.environment;
+        content += `# ─── ${currentEnv.toUpperCase()} ──────────────────────────────────────\n\n`;
+      }
       if (secret.description) {
         content += `# ${secret.description}\n`;
       }

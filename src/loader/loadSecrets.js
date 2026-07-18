@@ -12,9 +12,9 @@
  *     // ... start your app
  *   })();
  *
- * This connects to MongoDB, fetches all secrets, decrypts each, and sets
- * process.env[key] = value for each one (skipping already-set vars unless
- * override is true).
+ * This connects to MongoDB, fetches all secrets for the current NODE_ENV
+ * (development by default), decrypts each, and sets process.env[key] = value
+ * for each one (skipping already-set vars unless override is true).
  */
 const mongoose = require('mongoose');
 const Secret = require('../models/Secret.model');
@@ -23,13 +23,16 @@ const logger = require('../config/logger');
 const { MONGO_URI } = require('../config/db');
 
 /**
- * Load all secrets from MongoDB into process.env.
+ * Load all secrets from MongoDB into process.env for a specific environment.
+ * Uses NODE_ENV to determine which environment's secrets to load.
  * @param {Object} options
  * @param {boolean} options.override - If true, override already-set env vars (default: false).
+ * @param {string} options.environment - 'development' or 'production' (default: NODE_ENV || 'development').
  * @returns {Promise<number>} Number of secrets loaded into process.env.
  */
-async function loadSecrets({ override = false } = {}) {
+async function loadSecrets({ override = false, environment } = {}) {
   let loadedCount = 0;
+  const env = environment || process.env.NODE_ENV || 'development';
 
   try {
     // Connect to MongoDB (if not already connected)
@@ -38,10 +41,10 @@ async function loadSecrets({ override = false } = {}) {
       logger.info('loader connected to MongoDB');
     }
 
-    const secrets = await Secret.find({}).lean();
+    const secrets = await Secret.find({ environment: env }).lean();
 
     if (secrets.length === 0) {
-      logger.warn('loader found no secrets in database');
+      logger.warn(`loader found no secrets for environment "${env}"`);
       return 0;
     }
 
@@ -71,7 +74,7 @@ async function loadSecrets({ override = false } = {}) {
     // Disconnect — the app will manage its own connections
     await mongoose.disconnect();
 
-    logger.info('secrets loaded into process.env', `${loadedCount} secrets loaded`);
+    logger.info('secrets loaded into process.env', `${loadedCount} secrets loaded (env: ${env})`);
     return loadedCount;
   } catch (err) {
     logger.error('loader failed', err.message);

@@ -1,20 +1,22 @@
 /**
  * Secrets controller — thin HTTP handlers that call the service layer.
+ * All handlers now accept environment from query or body.
  */
 const secretsService = require('../services/secrets.service');
 
 /**
  * GET /api/secrets
  * Returns paginated secrets with decrypted values.
- * Query params: page, limit, search
+ * Query params: page, limit, search, environment
  */
 async function getAllSecrets(req, res) {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || '';
+    const environment = req.query.environment || 'development';
 
-    const result = await secretsService.getDecryptedSecrets({ page, limit, search });
+    const result = await secretsService.getDecryptedSecrets({ environment, page, limit, search });
     return res.json({ success: true, ...result });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -23,12 +25,12 @@ async function getAllSecrets(req, res) {
 
 /**
  * POST /api/secrets
- * Create or update a single secret.
- * Body: { key, value, description? }
+ * Create or update a single secret for a specific environment.
+ * Body: { key, value, description?, environment? }
  */
 async function upsertSecret(req, res) {
   try {
-    const { key, value, description } = req.body;
+    const { key, value, description, environment } = req.body;
 
     if (!key || !value) {
       return res.status(400).json({
@@ -37,8 +39,8 @@ async function upsertSecret(req, res) {
       });
     }
 
-    const secret = await secretsService.upsertSecret(key, value, description);
-    return res.json({ success: true, data: { key: secret.key } });
+    const secret = await secretsService.upsertSecret(key, value, description, environment);
+    return res.json({ success: true, data: { key: secret.key, environment: secret.environment } });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -46,21 +48,23 @@ async function upsertSecret(req, res) {
 
 /**
  * DELETE /api/secrets/:key
- * Delete a secret by key.
+ * Delete a secret by key and environment.
+ * Query params: environment
  */
 async function deleteSecret(req, res) {
   try {
     const { key } = req.params;
-    const result = await secretsService.deleteSecret(key);
+    const environment = req.query.environment || 'development';
+    const result = await secretsService.deleteSecret(key, environment);
 
     if (!result) {
       return res.status(404).json({
         success: false,
-        error: `Secret "${key}" not found`,
+        error: `Secret "${key}" not found in ${environment}`,
       });
     }
 
-    return res.json({ success: true, data: { key: result.key } });
+    return res.json({ success: true, data: { key: result.key, environment: result.environment } });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -68,12 +72,12 @@ async function deleteSecret(req, res) {
 
 /**
  * POST /api/secrets/import
- * Bulk import secrets from raw .env text.
- * Body: { envFileContents }
+ * Bulk import secrets from raw .env text into a specific environment.
+ * Body: { envFileContents, environment? }
  */
 async function importSecrets(req, res) {
   try {
-    const { envFileContents } = req.body;
+    const { envFileContents, environment } = req.body;
 
     if (!envFileContents) {
       return res.status(400).json({
@@ -82,7 +86,7 @@ async function importSecrets(req, res) {
       });
     }
 
-    const result = await secretsService.importFromEnvText(envFileContents);
+    const result = await secretsService.importFromEnvText(envFileContents, environment);
     return res.json({ success: true, data: result });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
