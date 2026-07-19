@@ -793,6 +793,23 @@ textarea {
   border-color: var(--accent-hover);
 }
 
+.export-btn {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+  font-weight: 600;
+}
+
+.export-btn:hover:not(:disabled) {
+  background: #059669;
+  border-color: #059669;
+}
+
+.export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ─── Table ─────────────────────────────────────────────────────────────────── */
 
 .table-wrapper {

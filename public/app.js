@@ -31,6 +31,7 @@ const fileInput = document.getElementById('file-input');
 const importMessage = document.getElementById('import-message');
 const searchInput = document.getElementById('search-input');
 const refreshBtn = document.getElementById('refresh-btn');
+const exportBtn = document.getElementById('export-btn');
 const paginationInfo = document.getElementById('pagination-info');
 const paginationControls = document.getElementById('pagination-controls');
 const deleteModal = document.getElementById('delete-modal');
@@ -244,6 +245,12 @@ async function loadSecrets(page = 1, search = '') {
       totalPages = result.totalPages || 1;
       totalItems = result.total || 0;
       currentSearch = search;
+      
+      // Enable/disable export button based on whether secrets exist
+      if (exportBtn) {
+        exportBtn.disabled = secrets.length === 0;
+      }
+      
       renderSecrets(secrets);
     } else {
       throw new Error(result.error || 'Failed to load secrets');
@@ -266,7 +273,21 @@ secretForm.addEventListener('submit', async (e) => {
   const value = secretValueInput.value.trim();
   const description = secretDescInput.value.trim();
 
-  if (!key || !value) return;
+  if (!key || !value) {
+    addMessage.textContent = !key ? '✗ Key is required.' : '✗ Value is required.';
+    addMessage.className = 'message error';
+    if (!key) secretKeyInput.focus();
+    else secretValueInput.focus();
+    return;
+  }
+
+  // Validate key format: letters, numbers, and underscores only
+  if (!/^[A-Za-z0-9_]+$/.test(key)) {
+    addMessage.textContent = '✗ Key must contain only letters, numbers, and underscores (no spaces or special characters).';
+    addMessage.className = 'message error';
+    secretKeyInput.focus();
+    return;
+  }
 
   addMessage.textContent = 'Saving...';
   addMessage.className = 'message info';
@@ -312,6 +333,7 @@ async function saveEdit() {
 
   if (!value) {
     alert('Value is required');
+    document.getElementById('edit-value').focus();
     return;
   }
 
@@ -360,7 +382,7 @@ function renderImportPreview() {
         <div class="import-preview-item">
           <div class="import-preview-key">${escapeHtml(item.key)}</div>
           <div class="import-preview-value-wrapper">
-            <input type="${inputType}" class="import-preview-value" data-idx="${idx}" value="${escapeHtml(item.value)}">
+            <input type="${inputType}" class="import-preview-value" data-idx="${idx}" value="${escapeHtml(item.value)}" pattern="[A-Za-z0-9_]+" title="Only letters, numbers, and underscores allowed.">
             <button class="btn-toggle-visibility" data-idx="${idx}" title="${item.hidden ? 'Show' : 'Hide'}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 ${item.hidden 
@@ -406,11 +428,12 @@ async function confirmImportPreview() {
   try {
     let imported = 0;
     for (const item of importPreviewData) {
+      const key = item.key.trim();
       const value = item.value.trim();
-      if (value) {
+      if (key && value) {
         await apiFetch(API_BASE, {
           method: 'POST',
-          body: JSON.stringify({ key: item.key, value, description: `Imported from .env file (${currentEnvironment})`, environment: currentEnvironment }),
+          body: JSON.stringify({ key, value, description: `Imported from .env file (${currentEnvironment})`, environment: currentEnvironment }),
         });
         imported++;
       }
@@ -623,6 +646,31 @@ if (refreshBtn) {
     await loadSecrets(currentPage, currentSearch);
     refreshBtn.disabled = false;
     refreshBtn.style.opacity = '1';
+  });
+}
+
+// ─── Export .env ──────────────────────────────────────────────────────────────
+
+if (exportBtn) {
+  exportBtn.addEventListener('click', async () => {
+    try {
+      const res = await fetch(`/api/secrets/export?environment=${currentEnvironment}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Export failed');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `.env.${currentEnvironment}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      alert(`Export failed: ${err.message}`);
+    }
   });
 }
 

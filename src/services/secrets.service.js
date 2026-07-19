@@ -114,7 +114,7 @@ async function getDecryptedSecrets({ environment = 'development', page = 1, limi
  */
 async function upsertSecret(key, value, description = '', environment = 'development') {
   try {
-    const encrypted = encrypt(value);
+    const encrypted = encrypt(value.trim());
     const cleanKey = key.toUpperCase().trim();
     const cleanEnv = environment.toLowerCase().trim();
 
@@ -127,7 +127,7 @@ async function upsertSecret(key, value, description = '', environment = 'develop
           value: encrypted.value,
           iv: encrypted.iv,
           authTag: encrypted.authTag,
-          description: description || '',
+          description: (description || '').trim(),
         },
       },
       { upsert: true, new: true, runValidators: true }

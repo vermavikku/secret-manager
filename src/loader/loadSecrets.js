@@ -71,9 +71,6 @@ async function loadSecrets({ override = false, environment } = {}) {
       }
     }
 
-    // Disconnect — the app will manage its own connections
-    await mongoose.disconnect();
-
     logger.info('secrets loaded into process.env', `${loadedCount} secrets loaded (env: ${env})`);
     return loadedCount;
   } catch (err) {

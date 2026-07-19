@@ -93,9 +93,47 @@ async function importSecrets(req, res) {
   }
 }
 
+/**
+ * GET /api/secrets/export
+ * Export secrets for a specific environment as a .env file.
+ * Query params: environment
+ */
+async function exportSecrets(req, res) {
+  try {
+    const environment = req.query.environment || 'development';
+    const result = await secretsService.getDecryptedSecrets({ environment, page: 1, limit: 1000 });
+    
+    if (!result.secrets || result.secrets.length === 0) {
+      return res.status(404).json({ success: false, error: `No secrets found for ${environment}` });
+    }
+
+    // Build .env file content
+    const lines = result.secrets.map((secret) => {
+      // Escape special characters in values
+      const escapedValue = secret.value.includes(' ') || secret.value.includes('#') || secret.value.includes('"')
+        ? `"${secret.value.replace(/"/g, '\\"')}"`
+        : secret.value;
+      return `${secret.key}=${escapedValue}`;
+    });
+
+    const envContent = lines.join('\n') + '\n';
+    const filename = `.env.${environment}`;
+
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('X-Environment', environment);
+    res.setHeader('X-Secret-Count', result.secrets.length.toString());
+    
+    return res.send(envContent);
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
 module.exports = {
   getAllSecrets,
   upsertSecret,
   deleteSecret,
   importSecrets,
+  exportSecrets,
 };

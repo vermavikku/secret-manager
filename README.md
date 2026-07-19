@@ -36,6 +36,9 @@ Secrets Manager is a standalone Node.js tool that you copy into any project fold
 - 📥 CLI tools for importing `.env` files and adding secrets
 - 📄 Auto-generates `.env.example` from your stored keys (safe to commit)
 - 🔌 Drop-in `require()` in your app's entry file
+- 📤 Export secrets to `.env.development` or `.env.production` files
+- ✅ Input validation — keys must contain only letters, numbers, and underscores
+- 🧹 Auto-trimming — all keys and values are trimmed before saving
 
 ---
 
@@ -256,6 +259,18 @@ The admin UI has three sections:
 - **Reveal** button per row — click to see the real value (only you can see it)
 - **Hide** button to re-mask the value
 - **Delete** button per row — click to delete (with confirmation prompt)
+- **Export .env** button — downloads all secrets for the current environment as `.env.development` or `.env.production`
+
+### Key Validation
+- Keys must contain only **letters (A-Z, a-z), numbers (0-9), and underscores (_)**
+- No spaces or special characters allowed
+- Keys are automatically trimmed and uppercased before saving
+- Values are automatically trimmed before saving
+
+### Export .env File
+- Click the **Export .env** button to download all secrets for the current environment
+- Exports as `.env.development` (Dev mode) or `.env.production` (Prod mode)
+- Button is disabled when no secrets exist for the current environment
 
 ---
 
@@ -413,6 +428,29 @@ Or add `PORT=4322` to the project's `secrets-manager/.env` file.
 | `npm run add-secret -- KEY value` | Add or update a single secret |
 | `npm run import-env -- /path/to/.env` | Import all secrets from a .env file |
 | `npm run gen-key` | Generate a new encryption key |
+
+## API Reference
+
+The secrets manager exposes a REST API under `/api/secrets` (protected by HTTP Basic Auth):
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/secrets` | GET | List all secrets with decrypted values (paginated) |
+| `/api/secrets` | POST | Create or update a single secret |
+| `/api/secrets/:key` | DELETE | Delete a secret by key |
+| `/api/secrets/import` | POST | Bulk import secrets from `.env` text |
+| `/api/secrets/export` | GET | Export all secrets for an environment as `.env.{environment}` |
+| `/api/config` | GET | Get database configuration (name, host) |
+
+### Export API Example
+
+```bash
+# Download .env.development
+curl -u admin:password http://127.0.0.1:4321/api/secrets/export?environment=development -o .env.development
+
+# Download .env.production
+curl -u admin:password http://127.0.0.1:4321/api/secrets/export?environment=production -o .env.production
+```
 
 ## Project Structure
 
