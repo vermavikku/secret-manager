@@ -34,10 +34,12 @@ Get up and running in 5 minutes:
    ```bash
    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
-4. **Set** the key in your shell profile or .env of secrets-manager refer the .env.example:
-   ```bash
-   export ENCRYPTION_KEY="<your-64-char-hex-key>"
-   ```
+4. **Set** the key:
+   - **Option A (recommended):** Add to your shell profile:
+     ```bash
+     export ENCRYPTION_KEY="<your-64-char-hex-key>"
+     ```
+   - **Option B:** Copy `.env.example` to `.env` inside the `secrets-manager` folder and update the values if you don't want to use shell environment variables.
 5. **Start** MongoDB locally on port `27017`
 6. **Launch** the admin UI:
    ```bash
@@ -192,6 +194,8 @@ source ~/.zshrc   # or source ~/.bashrc
 ```
 
 > ⚠️ **Never** put this key in a project file. It belongs in your shell profile only. This way, even if someone gains access to your project files, they cannot decrypt your secrets without also having access to your machine's user account.
+>
+> **⚠️ If you lose this key, your secrets are permanently inaccessible.** There is no recovery mechanism — without the exact 64-character hex key, the encrypted data in MongoDB cannot be decrypted. Keep a secure backup of this key outside the project.
 
 ### Set Your Project Name (Optional)
 
