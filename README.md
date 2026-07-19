@@ -24,6 +24,40 @@ Secrets Manager is a standalone Node.js tool that you copy into any project fold
 
 ---
 
+## Quick Start
+
+Get up and running in 5 minutes:
+
+1. **Copy** `secrets-manager/` into your project
+2. **Install** deps: `cd secrets-manager && npm install`
+3. **Generate** an encryption key:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+4. **Set** the key in your shell profile or .env of secrets-manager refer the .env.example:
+   ```bash
+   export ENCRYPTION_KEY="<your-64-char-hex-key>"
+   ```
+5. **Start** MongoDB locally on port `27017`
+6. **Launch** the admin UI:
+   ```bash
+   cd secrets-manager && npm run ui
+   ```
+7. **Open** `http://127.0.0.1:4321` in your browser
+8. **Log in** with `admin` / `admin` (or your custom credentials)
+9. **Add** secrets via the UI, or import an existing `.env` file
+10. **Use** in your app by adding at the top of your entry file:
+    ```javascript
+    (async () => {
+      await require('./secrets-manager/src/loader/loadSecrets')();
+      // start your app
+    })();
+    ```
+
+> **Tip:** For existing projects with a `.env` file, run `npm run import-env -- ../.env` to migrate all secrets at once.
+
+---
+
 ## 1. What This Tool Does & Why
 
 **The problem:** Traditional `.env` files store API keys, database passwords, and other secrets as plaintext on your filesystem. Any AI coding tool, teammate, or accidental `git push` can expose them.
@@ -46,6 +80,32 @@ Secrets Manager is a standalone Node.js tool that you copy into any project fold
 
 - **Node.js** (v16 or later)
 - **MongoDB** running locally on the default port (27017)
+
+### Minimum Requirements
+
+| Requirement | Details |
+|-------------|---------|
+| Node.js | v16 or later |
+| MongoDB | Local instance on port 27017 |
+| ENCRYPTION_KEY | 64-character hex string, set in shell profile |
+| Disk space | ~10MB for tool + MongoDB storage |
+| RAM | 50MB+ for Node + MongoDB |
+
+> **Note:** The admin UI binds to `127.0.0.1` only. No network exposure. No cloud services required.
+
+### Required Environment Variables
+
+Before running secrets-manager, you must set:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ENCRYPTION_KEY` | **Yes** | 64-char hex string used to encrypt/decrypt secrets |
+| `ADMIN_USER` | No | Admin UI username (default: `admin`) |
+| `ADMIN_PASSWORD` | No | Admin UI password (default: `admin`) |
+| `PROJECT_NAME` | No | MongoDB database name (default: `secrets-manager`) |
+| `PORT` | No | Admin UI port (default: `4321`) |
+
+**Only `ENCRYPTION_KEY` is mandatory.** Without it, the tool will refuse to start.
 
 ### Installing MongoDB
 
