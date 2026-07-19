@@ -168,6 +168,69 @@ That's it. No global installs, no configuration files to edit.
 
 ---
 
+## 🚀 Local Development Workflow
+
+Secrets Manager is designed **ONLY for local development**. It provides a secure, encrypted alternative to plaintext `.env` files that could otherwise leak secrets to version control or AI coding tools.
+
+### How Developers Use It
+
+1. **Copy** the `secrets-manager/` folder into your project repository
+2. **Install** dependencies: `cd secrets-manager && npm install`
+3. **Generate** your own unique `ENCRYPTION_KEY` (do NOT share with teammates)
+4. **Run** the admin UI: `npm run ui`
+5. **Add/Import** your secrets via the web UI or CLI
+6. **Wire into your app** — secrets load automatically on startup
+
+### Each Developer Maintains Their Own Instance
+
+- Every developer on your team should have their own local MongoDB instance
+- Every developer generates their own `ENCRYPTION_KEY`
+- Your encrypted database (`secrets-manager/.env` + MongoDB) stays local — never committed
+
+### Add to Your `.gitignore`
+
+Since each developer has their own local instance, add the entire `secrets-manager/` folder to your parent project's `.gitignore`:
+
+```gitignore
+# Parent project's .gitignore
+secrets-manager/
+```
+
+This ensures you never accidentally commit:
+- The local encrypted database files
+- Admin configuration (`secrets-manager/.env`)
+- Any developer-specific secrets-manager instance
+
+---
+
+## 🚀 Production Deployment
+
+**This project is NOT designed for production deployments.**
+
+### Do NOT Deploy Secrets Manager
+
+- ❌ Do NOT commit or deploy the `secrets-manager/` folder to production servers
+- ❌ Do NOT rely on local MongoDB in production environments
+- ❌ Do NOT use the admin UI in production
+
+### Use Appropriate Production Solutions
+
+In production, use one of these established secret management systems:
+
+| Provider | Service |
+|----------|---------|
+| AWS | [Secrets Manager](https://aws.amazon.com/secrets-manager/) or ECS/EKS environment variables |
+| Azure | [Key Vault](https://azure.microsoft.com/en-us/services/key-vault/) or App Service environment variables |
+| Google Cloud | [Secret Manager](https://cloud.google.com/secret-manager) or Cloud Run environment variables |
+| HashiCorp | [Vault](https://www.vaultproject.io/) |
+| Other | Platform-provided environment variables (Render, Fly.io, etc.) |
+
+### Production Servers Use Standard Environment Variables
+
+Production applications should read secrets from their hosting platform's native environment variable system, exactly as they did before using Secrets Manager locally. Your production `NODE_ENV` will be set to `"production"` and the loader gracefully skips loading secrets, allowing your app to use system environment variables as intended.
+
+---
+
 ## 4. Generate Your Encryption Key
 
 The encryption key is the **one real secret** that Secrets Manager needs. It must be a 64-character hex string (32 bytes).
@@ -343,30 +406,53 @@ The admin UI has three sections:
 This is the most important step. In your application's **entry file** (the very first file that runs — `index.js`, `app.js`, `server.js`, etc.), add this at the **very top**, before any other code:
 
 ```javascript
-// BEFORE — loading from .env (insecure):
-// require('dotenv').config();
-// const apiKey = process.env.MY_API_KEY;
+const fs = require("fs");
+const path = require("path");
 
-// AFTER — loading from encrypted MongoDB:
+async function loadLocalSecrets() {
+  // Skip in production
+  if (process.env.NODE_ENV === "production") {
+    console.log("🚀 Production mode detected. Using system environment variables.");
+    return;
+  }
+
+  const loaderPath = path.join(
+    __dirname,
+    "secrets-manager",
+    "src",
+    "loader",
+    "loadSecrets.js"
+  );
+
+  // Secrets Manager not installed
+  if (!fs.existsSync(loaderPath)) {
+    console.log("ℹ️ Secrets Manager not found. Using process.env.");
+    return;
+  }
+
+  try {
+    const loadSecrets = require(loaderPath);
+    await loadSecrets();
+    console.log("🔐 Local secrets loaded.");
+  } catch (err) {
+    console.warn("⚠️ Failed to load Secrets Manager.");
+    console.warn(err.message);
+  }
+}
+
 (async () => {
-  await require('./secrets-manager/src/loader/loadSecrets')();
-  // Your app starts here — process.env is now populated
-  // const apiKey = process.env.MY_API_KEY;
+  await loadLocalSecrets();
+
+  app.listen(process.env.PORT || 3000, () => {
+    console.log("Server running...");
+  });
 })();
 ```
 
-Or with `.then()`:
-```javascript
-require('./secrets-manager/src/loader/loadSecrets')()
-  .then(() => {
-    // Start your app
-    app.listen(3000);
-  })
-  .catch((err) => {
-    console.error('Failed to load secrets:', err);
-    process.exit(1);
-  });
-```
+**Why this pattern?** This production-safe loader:
+- Skips Secrets Manager entirely in production (uses platform env vars)
+- Gracefully handles missing Secrets Manager (falls back to process.env)
+- Won't crash your production deployment if the tool isn't present
 
 **Options:**
 - `loadSecrets()` — loads secrets for the current `NODE_ENV` (defaults to `development`)
@@ -397,14 +483,6 @@ Add these scripts to your **parent project's** `package.json` (the one at the ro
 
 The loader automatically detects `process.env.NODE_ENV` and filters secrets by that environment.
 
-**What happens when your app starts:**
-1. Connects to local MongoDB
-2. Fetches all encrypted secrets matching the current `NODE_ENV`
-3. Decrypts each one
-4. Sets `process.env[KEY] = value` for each
-5. Disconnects from MongoDB
-6. Your app continues with all secrets available via `process.env`
-
 ---
 
 ## 11. .env.example — Safe to Commit
@@ -425,9 +503,9 @@ This file contains:
 ### "ENCRYPTION_KEY is missing" error
 
 ```
-╔══════════════════════════════════════════╗
-║  ENCRYPTION_KEY is missing!              ║
-╚══════════════════════════════════════════╝
+╔══════════════════════════════════════╗
+║  ENCRYPTION_KEY is missing!        ║
+╚══════════════════════════════════════╝
 ```
 
 **Solution:** You haven't set the `ENCRYPTION_KEY` environment variable.
@@ -558,8 +636,8 @@ secrets-manager/
 
 # Generated in parent project root (not inside secrets-manager/):
 # .env.example
+```
 
 ---
 
 *Built with ❤️ for developers who care about secret hygiene.*
-
