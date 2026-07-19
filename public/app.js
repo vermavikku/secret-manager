@@ -660,6 +660,35 @@ secretsTbody.addEventListener('click', (e) => {
   }
 });
 
+// ─── Load Database Info ──────────────────────────────────────────────────────
+
+async function loadDbInfo() {
+  try {
+    const res = await fetch('/api/config');
+    const data = await res.json();
+    if (data.success) {
+      const dbNameEl = document.getElementById('db-name');
+      const dbHostEl = document.getElementById('db-host');
+      if (dbNameEl) {
+        dbNameEl.textContent = data.data.databaseName || 'secrets-manager';
+      }
+      if (dbHostEl) {
+        dbHostEl.textContent = data.data.host || 'localhost:27017';
+      }
+    }
+  } catch (err) {
+    const dbNameEl = document.getElementById('db-name');
+    const dbHostEl = document.getElementById('db-host');
+    if (dbNameEl) {
+      dbNameEl.textContent = 'secrets-manager';
+    }
+    if (dbHostEl) {
+      dbHostEl.textContent = 'localhost:27017';
+    }
+  }
+}
+
 // ─── Initialize ───────────────────────────────────────────────────────────────
 
 loadSecrets();
+loadDbInfo();
