@@ -39,7 +39,7 @@ Get up and running in 5 minutes:
      ```bash
      export ENCRYPTION_KEY="<your-64-char-hex-key>"
      ```
-   - **Option B:** Copy `.env.example` to `.env` inside the `secrets-manager` folder and update the values if you don't want to use shell environment variables.
+   - **Option B (fast):** Copy `.env.example` to `.env` inside the `secrets-manager` folder and update the values if you don't want to use shell environment variables.
 5. **Start** MongoDB locally on port `27017`
 6. **Launch** the admin UI:
    ```bash
